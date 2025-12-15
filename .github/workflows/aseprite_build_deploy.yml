@@ -25,10 +25,14 @@ jobs:
       - name: Install Ninja
         run: choco install ninja -y
 
-      - name: Download Skia
+      - name: Download prebuilt Skia
         run: |
           curl -L -o skia.zip https://github.com/aseprite/skia/releases/download/m81-b607b32047/Skia-Windows-Release-X64.zip
           tar -xf skia.zip
+          if not exist skia\out\Release-x64 (
+            echo Skia prebuilt library not found
+            exit 1
+          )
 
       - name: Create build directory
         run: mkdir build
@@ -46,6 +50,7 @@ jobs:
           -DLAF_BACKEND=skia
           -DSKIA_DIR=..\skia
           -DSKIA_LIBRARY_DIR=..\skia\out\Release-x64
+          -DSKIA_LIBRARY=skia
           -G Ninja
           ..
 
