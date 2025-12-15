@@ -1,4 +1,4 @@
-name: Build and deploy Aseprite Test
+name: Build Aseprite (Windows)
 
 on:
   push:
@@ -11,11 +11,10 @@ env:
 
 jobs:
   build-aseprite:
-    name: Build Aseprite (Windows)
     runs-on: windows-latest
 
     steps:
-      - name: Checkout repository
+      - name: Checkout
         uses: actions/checkout@v4
 
       - name: Install Ninja
@@ -25,7 +24,6 @@ jobs:
         run: |
           curl -L -o skia.zip https://github.com/aseprite/skia/releases/download/m81-b607b32047/Skia-Windows-Release-X64.zip
           tar -xf skia.zip
-          move Skia skia
 
       - name: Download Aseprite source
         run: |
@@ -37,23 +35,23 @@ jobs:
       - name: Setup Visual Studio environment
         uses: seanmiddleditch/gha-setup-vsdevenv@v1
 
-      - name: Run CMake
-        working-directory: aseprite/build
+      - name: Configure CMake
         shell: cmd
+        working-directory: aseprite/build
         run: >
           cmake
-          -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE }}
+          -DCMAKE_BUILD_TYPE=%BUILD_TYPE%
           -DLAF_BACKEND=skia
           -DSKIA_DIR=../../skia
           -DSKIA_LIBRARY_DIR=../../skia/out/Release-x64
           -G Ninja
           ..
 
-      - name: Build with Ninja
+      - name: Build
         working-directory: aseprite/build
         run: ninja aseprite
 
-      - name: Cleanup build artifacts
+      - name: Cleanup
         working-directory: aseprite/build/bin
         shell: bash
         run: rm -f gen modp_b64_gen *.manifest *.exe.manifest
@@ -62,7 +60,7 @@ jobs:
         working-directory: aseprite/build/bin
         run: echo "# portable" > aseprite.ini
 
-      - name: Create zip
+      - name: Zip
         working-directory: aseprite/build/bin
         run: 7z a Aseprite-Windows.zip *
 
