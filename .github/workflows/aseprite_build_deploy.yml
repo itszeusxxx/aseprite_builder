@@ -1,85 +1,27 @@
 name: Build and deploy Aseprite Test
 
 on:
-  schedule:
-    - cron: '0 0 * * *'
   push:
     branches:
       - master
+  workflow_dispatch:
 
 env:
   BUILD_TYPE: Release
 
 jobs:
-  check-version:
-    name: Check latest Aseprite release
-    runs-on: ubuntu-latest
-    outputs:
-      download_url: ${{ steps.version_info.outputs.download_url }}
-      latest_tag: ${{ steps.version_info.outputs.latest_tag }}
-      should_build: ${{ steps.should_build.outputs.should_build }}
-      upload_url: ${{ steps.create_release.outputs.upload_url }}
-
-    steps:
-      - name: Get latest version info
-        id: version_info
-        run: |
-          data=$(curl -sL https://api.github.com/repos/aseprite/aseprite/releases/latest)
-          LATEST_TAG=$(echo "$data" | jq -r '.tag_name')
-          DOWNLOAD_URL=$(echo "$data" | jq -r '.assets[].browser_download_url')
-          VERSION_INFO=$(echo "$data" | jq -r '.body')
-
-          echo "$LATEST_TAG" > latest_tag.txt
-          echo "latest_tag=$LATEST_TAG" >> $GITHUB_OUTPUT
-          echo "download_url=$DOWNLOAD_URL" >> $GITHUB_OUTPUT
-          echo "version_info<<EOF" >> $GITHUB_OUTPUT
-          echo "$VERSION_INFO" >> $GITHUB_OUTPUT
-          echo "EOF" >> $GITHUB_OUTPUT
-
-      - name: Load version from cache
-        id: version_check
-        uses: actions/cache@v4
-        with:
-          path: latest_tag.txt
-          key: aseprite-latest-tag
-
-      - name: Should we start new build?
-        id: should_build
-        if: steps.version_check.outputs.cache-hit != 'true'
-        run: echo "should_build=true" >> $GITHUB_OUTPUT
-
-      - name: Create GitHub release
-        id: create_release
-        if: steps.should_build.outputs.should_build
-        uses: actions/create-release@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          tag_name: ${{ steps.version_info.outputs.latest_tag }}
-          release_name: Release Aseprite ${{ steps.version_info.outputs.latest_tag }}
-          body: ${{ steps.version_info.outputs.version_info }}
-          draft: true
-          prerelease: false
-
   build-aseprite:
     name: Build Aseprite (Windows)
-    needs: check-version
-    if: needs.check-version.outputs.should_build == 'true'
     runs-on: windows-latest
 
     steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
       - name: Install Ninja
         run: choco install ninja -y
 
-      - name: Get Skia from cache
-        id: skia-cache
-        uses: actions/cache@v4
-        with:
-          path: skia
-          key: skia-windows-cache
-
-      - name: Download Skia if not in cache
-        if: steps.skia-cache.outputs.cache-hit != 'true'
+      - name: Download Skia
         run: |
           curl -L -o skia.zip https://github.com/aseprite/skia/releases/download/m81-b607b32047/Skia-Windows-Release-X64.zip
           tar -xf skia.zip
@@ -87,7 +29,7 @@ jobs:
 
       - name: Download Aseprite source
         run: |
-          curl -L -o aseprite.zip ${{ needs.check-version.outputs.download_url }}
+          curl -L -o aseprite.zip https://github.com/aseprite/aseprite/archive/refs/heads/main.zip
           tar -xf aseprite.zip
           move aseprite-* aseprite
           mkdir aseprite\build
@@ -122,14 +64,10 @@ jobs:
 
       - name: Create zip
         working-directory: aseprite/build/bin
-        run: 7z a Aseprite-${{ needs.check-version.outputs.latest_tag }}-Windows.zip *
+        run: 7z a Aseprite-Windows.zip *
 
-      - name: Upload release asset
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
         with:
-          upload_url: ${{ needs.check-version.outputs.upload_url }}
-          asset_path: aseprite/build/bin/Aseprite-${{ needs.check-version.outputs.latest_tag }}-Windows.zip
-          asset_name: Aseprite-${{ needs.check-version.outputs.latest_tag }}-Windows.zip
-          asset_content_type: application/zip
+          name: Aseprite-Windows
+          path: aseprite/build/bin/Aseprite-Windows.zip
