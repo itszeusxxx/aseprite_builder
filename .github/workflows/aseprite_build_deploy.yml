@@ -1,4 +1,4 @@
-name: Build Aseprite (Windows)
+name: Build and deploy Aseprite Test
 
 on:
   push:
@@ -11,6 +11,7 @@ env:
 
 jobs:
   build-aseprite:
+    name: Build Aseprite (Windows)
     runs-on: windows-latest
 
     steps:
@@ -33,7 +34,8 @@ jobs:
           mkdir aseprite\build
 
       - name: Setup Visual Studio environment
-        uses: seanmiddleditch/gha-setup-vsdevenv@v1
+        shell: cmd
+        run: '"C:\Program Files\Microsoft Visual Studio\2022\Enterprise\Common7\Tools\VsDevCmd.bat" -arch=x64'
 
       - name: Configure CMake
         shell: cmd
@@ -51,7 +53,7 @@ jobs:
         working-directory: aseprite/build
         run: ninja aseprite
 
-      - name: Cleanup
+      - name: Cleanup build artifacts
         working-directory: aseprite/build/bin
         shell: bash
         run: rm -f gen modp_b64_gen *.manifest *.exe.manifest
@@ -60,7 +62,7 @@ jobs:
         working-directory: aseprite/build/bin
         run: echo "# portable" > aseprite.ini
 
-      - name: Zip
+      - name: Create zip
         working-directory: aseprite/build/bin
         run: 7z a Aseprite-Windows.zip *
 
