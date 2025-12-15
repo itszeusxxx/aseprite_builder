@@ -31,7 +31,7 @@ jobs:
           tar -xf skia.zip
 
       - name: Create build directory
-        run: mkdir aseprite\build
+        run: mkdir build
 
       - name: Setup Visual Studio environment
         shell: cmd
@@ -39,38 +39,38 @@ jobs:
 
       - name: Configure CMake
         shell: cmd
-        working-directory: aseprite\build
+        working-directory: build
         run: >
           cmake
           -DCMAKE_BUILD_TYPE=%BUILD_TYPE%
           -DLAF_BACKEND=skia
-          -DSKIA_DIR=..\..\skia
-          -DSKIA_LIBRARY_DIR=..\..\skia\out\Release-x64
+          -DSKIA_DIR=..\skia
+          -DSKIA_LIBRARY_DIR=..\skia\out\Release-x64
           -G Ninja
           ..
 
       - name: Build
         shell: cmd
-        working-directory: aseprite\build
+        working-directory: build
         run: ninja aseprite
 
       - name: Cleanup build artifacts
         shell: bash
-        working-directory: aseprite\build\bin
+        working-directory: build\bin
         run: rm -f gen modp_b64_gen *.manifest *.exe.manifest
 
       - name: Make portable
         shell: cmd
-        working-directory: aseprite\build\bin
+        working-directory: build\bin
         run: echo # portable > aseprite.ini
 
       - name: Create zip
         shell: cmd
-        working-directory: aseprite\build\bin
+        working-directory: build\bin
         run: 7z a Aseprite-Windows.zip *
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: Aseprite-Windows
-          path: aseprite\build\bin\Aseprite-Windows.zip
+          path: build\bin\Aseprite-Windows.zip
