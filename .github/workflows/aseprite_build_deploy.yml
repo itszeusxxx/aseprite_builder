@@ -66,6 +66,25 @@ jobs:
         working-directory: build/bin
         run: rm -f gen modp_b64_gen *.ilk *.pdb *.manifest *.exe.manifest
 
+      - name: Copy OpenSSL DLLs
+        shell: powershell
+        run: |
+          # OpenSSL is pre-installed on windows-latest runners
+          $opensslPath = "C:\Program Files\OpenSSL\bin"
+          if (Test-Path $opensslPath) {
+            Copy-Item "$opensslPath\libcrypto-3-x64.dll" -Destination "build\bin\" -Force
+            Copy-Item "$opensslPath\libssl-3-x64.dll" -Destination "build\bin\" -Force
+            Write-Host "OpenSSL DLLs copied successfully!"
+          } else {
+            # Fallback: Install OpenSSL via chocolatey
+            choco install openssl -y
+            $chocoOpenssl = "C:\Program Files\OpenSSL-Win64\bin"
+            Copy-Item "$chocoOpenssl\libcrypto-3-x64.dll" -Destination "build\bin\" -Force
+            Copy-Item "$chocoOpenssl\libssl-3-x64.dll" -Destination "build\bin\" -Force
+            Write-Host "OpenSSL DLLs copied from choco install!"
+          }
+          Get-ChildItem "build\bin\*.dll"
+
       - name: Make portable
         shell: cmd
         working-directory: build\bin
