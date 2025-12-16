@@ -1,7 +1,7 @@
 name: Build and deploy Aseprite Test
 
 on:
-  push:
+  push: 
     branches:
       - master
   workflow_dispatch:
@@ -29,39 +29,35 @@ jobs:
       - name: Download prebuilt Skia
         shell: cmd
         run: |
-          curl -L -o skia.zip https://github.com/aseprite/skia/releases/download/m81-b607b32047/Skia-Windows-Release-X64.zip
-          tar -xf skia.zip
+          curl -L -o skia.zip https://github.com/aseprite/skia/releases/download/m102-861e4743af/Skia-Windows-Release-x64.zip
+          7z x skia.zip -o"%CD%"
           dir
-          if not exist Skia\out\Release-x64 (
+          dir Skia
+          if exist Skia\out\Release-x64 (
+            echo Skia directory found
+            dir Skia\out\Release-x64
+          ) else (
             echo Skia prebuilt library not found
             exit /b 1
           )
 
       - name: Create build directory
         shell: cmd
-        run: mkdir build
-
-      - name: Setup Visual Studio environment
-        shell: cmd
-        run: '"C:\Program Files\Microsoft Visual Studio\2022\Enterprise\Common7\Tools\VsDevCmd.bat" -arch=x64'
+        run:  mkdir build
 
       - name: Configure CMake
         shell: cmd
         working-directory: build
-        run: >
-          cmake
-          -DCMAKE_BUILD_TYPE=%BUILD_TYPE%
-          -DLAF_BACKEND=skia
-          -DSKIA_DIR=..\Skia
-          -DSKIA_LIBRARY_DIR=..\Skia\out\Release-x64
-          -DSKIA_LIBRARY=skia
-          -G Ninja
-          ..
+        run: |
+          call "C:\Program Files\Microsoft Visual Studio\2022\Enterprise\Common7\Tools\VsDevCmd.bat" -arch=x64
+          cmake -DCMAKE_BUILD_TYPE=%BUILD_TYPE% -DLAF_BACKEND=skia -DSKIA_DIR=%CD%\. .\Skia -DSKIA_LIBRARY_DIR=%CD%\..\Skia\out\Release-x64 -DSKIA_LIBRARY=%CD%\..\Skia\out\Release-x64\skia.lib -G Ninja ..
 
       - name: Build
         shell: cmd
         working-directory: build
-        run: ninja aseprite
+        run: |
+          call "C:\Program Files\Microsoft Visual Studio\2022\Enterprise\Common7\Tools\VsDevCmd.bat" -arch=x64
+          ninja aseprite
 
       - name: Cleanup build artifacts
         shell: bash
@@ -76,7 +72,7 @@ jobs:
       - name: Create zip
         shell: cmd
         working-directory: build\bin
-        run: 7z a Aseprite-Windows.zip *
+        run: 7z a Aseprite-Windows. zip *
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
