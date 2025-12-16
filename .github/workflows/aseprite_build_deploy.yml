@@ -1,4 +1,4 @@
-name: Build and deploy Aseprite Test
+name: Build and deploy Aseprite
 
 on:
   push: 
@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
 
 env:
-  BUILD_TYPE: Release
+  BUILD_TYPE: RelWithDebInfo
 
 jobs:
   build-aseprite:
@@ -26,33 +26,35 @@ jobs:
         shell: cmd
         run: choco install ninja -y
 
-      - name: Download prebuilt Skia
-        shell: cmd
+      - name: Download prebuilt Skia (m124)
+        shell: powershell
         run: |
-          curl -L -o skia.zip https://github.com/aseprite/skia/releases/download/m102-861e4743af/Skia-Windows-Release-x64.zip
-          7z x skia.zip -o"%CD%"
-          dir
-          dir Skia
-          if exist Skia\out\Release-x64 (
-            echo Skia directory found
-            dir Skia\out\Release-x64
-          ) else (
-            echo Skia prebuilt library not found
-            exit /b 1
-          )
-
-      - name: Create build directory
-        shell: cmd
-        run:  mkdir build
+          New-Item -ItemType Directory -Force -Path "$env:GITHUB_WORKSPACE\deps\skia"
+          Invoke-WebRequest -Uri "https://github.com/aseprite/skia/releases/download/m124-08a5439a6b/Skia-Windows-Release-x64.zip" -OutFile "$env:GITHUB_WORKSPACE\skia.zip"
+          Expand-Archive -Path "$env:GITHUB_WORKSPACE\skia.zip" -DestinationPath "$env:GITHUB_WORKSPACE\deps\skia" -Force
+          Write-Host "Skia extracted to: $env:GITHUB_WORKSPACE\deps\skia"
+          Get-ChildItem -Path "$env:GITHUB_WORKSPACE\deps\skia" -Recurse | Select-Object -First 20
+          if (Test-Path "$env:GITHUB_WORKSPACE\deps\skia\out\Release-x64\skia.lib") {
+            Write-Host "Skia library found!"
+          } else {
+            Write-Host "Skia library NOT found!"
+            exit 1
+          }
 
       - name: Configure CMake
         shell: cmd
-        working-directory: build
         run: |
+          mkdir build
+          cd build
           call "C:\Program Files\Microsoft Visual Studio\2022\Enterprise\Common7\Tools\VsDevCmd.bat" -arch=x64
-          cmake -DCMAKE_BUILD_TYPE=%BUILD_TYPE% -DLAF_BACKEND=skia -DSKIA_DIR=%CD%\. .\Skia -DSKIA_LIBRARY_DIR=%CD%\..\Skia\out\Release-x64 -DSKIA_LIBRARY=%CD%\..\Skia\out\Release-x64\skia.lib -G Ninja ..
+          cmake -DCMAKE_BUILD_TYPE=%BUILD_TYPE% ^
+                -DLAF_BACKEND=skia ^
+                -DSKIA_DIR=%GITHUB_WORKSPACE%\deps\skia ^
+                -DSKIA_LIBRARY_DIR=%GITHUB_WORKSPACE%\deps\skia\out\Release-x64 ^
+                -DSKIA_LIBRARY=%GITHUB_WORKSPACE%\deps\skia\out\Release-x64\skia.lib ^
+                -G Ninja ..
 
-      - name: Build
+      - name: Build Aseprite
         shell: cmd
         working-directory: build
         run: |
@@ -62,7 +64,7 @@ jobs:
       - name: Cleanup build artifacts
         shell: bash
         working-directory: build/bin
-        run: rm -f gen modp_b64_gen *.manifest *.exe.manifest
+        run: rm -f gen modp_b64_gen *.ilk *.pdb *.manifest *.exe.manifest
 
       - name: Make portable
         shell: cmd
@@ -72,7 +74,7 @@ jobs:
       - name: Create zip
         shell: cmd
         working-directory: build\bin
-        run: 7z a Aseprite-Windows. zip *
+        run: 7z a Aseprite-Windows.zip *
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
