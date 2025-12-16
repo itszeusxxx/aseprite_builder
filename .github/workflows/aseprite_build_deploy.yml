@@ -23,18 +23,21 @@ jobs:
           submodules: recursive
 
       - name: Install Ninja
+        shell: cmd
         run: choco install ninja -y
 
       - name: Download prebuilt Skia
+        shell: cmd
         run: |
           curl -L -o skia.zip https://github.com/aseprite/skia/releases/download/m81-b607b32047/Skia-Windows-Release-X64.zip
           tar -xf skia.zip
           if not exist skia\out\Release-x64 (
             echo Skia prebuilt library not found
-            exit 1
+            exit /b 1
           )
 
       - name: Create build directory
+        shell: cmd
         run: mkdir build
 
       - name: Setup Visual Studio environment
@@ -61,7 +64,7 @@ jobs:
 
       - name: Cleanup build artifacts
         shell: bash
-        working-directory: build\bin
+        working-directory: build/bin
         run: rm -f gen modp_b64_gen *.manifest *.exe.manifest
 
       - name: Make portable
